@@ -4,6 +4,7 @@ from django.db import models
 
 class IG_Hashtag(models.Model):
     name = models.CharField(max_length=200)
+    count = models.IntegerField(null=True)
 
 class IG_HashFriends(models.Model):
     base_hash = models.ForeignKey(IG_Hashtag,related_name='base')
@@ -23,6 +24,7 @@ class IG_Image(models.Model):
     url = models.URLField()
     likes = models.IntegerField()
     user = models.ForeignKey(IG_User)
+    IG_id = models.CharField(max_length=200)
 
 class IG_ImageTags(models.Model):
     image = models.ForeignKey(IG_Image)
@@ -44,6 +46,7 @@ class T_Tweet(models.Model):
     user = models.ForeignKey(T_User,null=True)
     retweets = models.IntegerField()
     favorited = models.IntegerField()
+    t_id = models.CharField(max_length=200)
 
 class T_TweetTags(models.Model):
     tweet = models.ForeignKey(T_Tweet)

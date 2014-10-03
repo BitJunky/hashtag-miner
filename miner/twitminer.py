@@ -1,10 +1,12 @@
 from django.conf import settings
+import time
 import numpy as np
 import pandas as pd
 import twitter
 from miner.models import T_Hashtag,T_Tweet,T_User,T_TweetTags,T_HashFriends
 import IPython
 from collections import Counter
+from twitter import TwitterError
 import hashlib
 
 class TwitHasher:
@@ -40,15 +42,17 @@ class TwitHasher:
                 break
         return Counter(hashtags) 
 
-    def store_in_db(self,keyword='ebola',max_iters=10):
+    def store_in_db(self,keyword='ebola',max_iters=10,no_stream=True):
 
         def process_tweets(tweets,base_hashtag):
 
             for tweet in tweets:
+                if tweet.retweeted_status is not None:
+                    continue
                 try:
-                    db_tweet = T_Tweet.objects.get(tweet = tweet.text)
+                    db_tweet = T_Tweet.objects.get(t_id = tweet.id)
                 except T_Tweet.DoesNotExist:
-                    db_tweet = T_Tweet.objects.create(tweet = tweet.text, retweets = tweet.retweet_count, favorited = tweet.favorite_count)
+                    db_tweet = T_Tweet.objects.create(t_id = tweet.id,tweet = tweet.text, retweets = tweet.retweet_count, favorited = tweet.favorite_count)
                     created = True
                 else:
                     created = False
@@ -67,54 +71,120 @@ class TwitHasher:
                         db_hashtag,created = T_Hashtag.objects.get_or_create(name = hashtag.text.lower())
                         db_tag_tweet = T_TweetTags.objects.create(tweet = db_tweet,hashtag = db_hashtag)
                         T_HashFriends.objects.get_or_create(base_hash=base_hashtag,related_hash=db_hashtag)
-                        
-        keyword = keyword.replace('#','')
-        pop_tweets = self.api.GetSearch('#'+keyword,count=100)
-        if not pop_tweets:
-            return None
-        
+
+        def process_streamed(tweets,base_hashtag):
+
+            for tweet in tweets:
+                if 'retweeted_status' in tweet:
+                    continue
+                try:
+                    db_tweet = T_Tweet.objects.get(t_id = tweet['id'])
+                except T_Tweet.DoesNotExist:
+                    db_tweet = T_Tweet.objects.create(t_id = tweet['id'],tweet = tweet['text'], retweets = tweet['retweet_count'], favorited = tweet['favorite_count'])
+                    created = True
+                else:
+                    created = False
+
+                if created:
+
+                    db_user,user_created = T_User.objects.get_or_create(name = tweet['user']['screen_name'])
+                    db_user.followers = tweet['user']['followers_count']
+                    db_user.save()
+                
+                    db_tweet.user = db_user
+                    db_tweet.retweets = tweet['retweet_count']
+                    db_tweet.favorited = tweet['favorite_count']
+                    db_tweet.save()
+
+                    for hashtag in tweet['entities']['hashtags']:
+                        db_hashtag,created = T_Hashtag.objects.get_or_create(name = hashtag['text'].lower())
+                        db_tag_tweet = T_TweetTags.objects.create(tweet = db_tweet,hashtag = db_hashtag)
+                        T_HashFriends.objects.get_or_create(base_hash=base_hashtag,related_hash=db_hashtag)
+
+        keyword = keyword.lower().replace('#','')
         try:
             db_hashtag = T_Hashtag.objects.get(name = keyword)
         except T_Hashtag.DoesNotExist:
-            db_hashtag = T_Hashtag.objects.create(name = keyword)
+            db_hashtag = T_Hashtag.objects.create(name = keyword)   
+        pop_tweets = self.api.GetSearch('#'+keyword,count=100,result_type='popular')
+        if not pop_tweets:
+            return None
+        
+        
         process_tweets(pop_tweets,base_hashtag=db_hashtag)
+
         counter = 0
-        while True:
-            counter += 1
-            recent_tweets = self.api.GetSearch('#'+keyword,count=100)
-            process_tweets(recent_tweets,base_hashtag=db_hashtag)
-            print counter
-            if counter >= max_iters:
+        while counter < max_iters:
+            try:
+                recent_tweets = self.api.GetSearch('#'+keyword,count=100,result_type='recent')
+            except TwitterError:
                 break
+            else:
+                process_tweets(recent_tweets,base_hashtag=db_hashtag)
+                counter += 1
+        if no_stream:
+            counter = 0
+            recent_tweets = []
+            stream = self.api.GetStreamFilter(track=['#'+keyword])
+            while counter < max_iters:
+                try:
+                    tweet = stream.next()
+                except TwitterError:
+                    break
+                else:
+                    counter += 1
+                    time.sleep(2)
+                    recent_tweets.append(tweet)
+            process_streamed(recent_tweets,base_hashtag=db_hashtag)
 
     def get_users(self,hashtag='ebola'):
 
         try:
-            db_hashtag = T_Hashtag.objects.get(name = hashtag.lower)
+            db_hashtag = T_Hashtag.objects.get(name = hashtag.lower())
         except T_Hashtag.DoesNotExit:
             return None
 
         uses = T_TweetTags.objects.filter(hashtag = db_hashtag)
-        users = []
+        users = {}
         for use in uses:
             tweet = use.tweet
-            users.append(tweet.user)
-        counts = [(str(user.name),user.followers) for user in set(users)]
-        return sorted(counts, key=lambda tup: tup[1],reverse=True)
+            if tweet.user in users:
+                users.update({tweet.user: users[tweet.user] + tweet.retweets})
+            else:
+                users.update({tweet.user:tweet.retweets})
+        counts = [(str(user.name),user.followers,retweet) for user,retweet in users.iteritems()]
+        return sorted(counts, key=lambda tup: np.log(tup[1])*tup[2],reverse=True)
+
+    def top_tweets(self,hashtag,max_tweets):
+
+        try:
+            db_hashtag = T_Hashtag.objects.get(name = hashtag.lower())
+        except T_Hashtag.DoesNotExit:
+            return None
+
+        counts = []
+        uses = T_TweetTags.objects.filter(hashtag = db_hashtag)
+        for use in uses:
+            counts.append((str(use.tweet.tweet.encode('utf-8')),use.tweet.user.name,use.tweet.retweets))    
+        return sorted(counts, key=lambda tup: tup[2],reverse=True)[:max_tweets]
+
 
     def related_tags(self,hashtag):
 
         try:
-            db_hashtag = T_Hashtag.objects.get(name = hashtag.lower)
+            db_hashtag = T_Hashtag.objects.get(name = hashtag.lower())
         except T_Hashtag.DoesNotExit:
             return None
 
         QS = T_HashFriends.objects.filter(base_hash=db_hashtag)
-        hash_counts = {}
+        hash_counts = []
         for qs in QS:
             related_hash = qs.related_hash.name
-            hash_counts.update({related_hash:self.count_tweets_hash(related_hash)})
-        return hash_counts
+            if related_hash == hashtag:
+                continue
+            hash_counts.append((related_hash,self.count_tweets_hash(related_hash)))
+
+        return sorted(hash_counts, key=lambda tup: tup[1],reverse=True)
 
     def count_tweets_hash(self,hashtag):
 

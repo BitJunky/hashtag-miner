@@ -1,0 +1,50 @@
+{% extends "index.html" %}  
+
+{% block content %}
+     <!-- row of columns -->
+      <div class="row">
+        <div class="col-lg-4" id="topusers" >
+          <h2>Top Posters</h2>
+ <table style="width:100%">
+{% for user in t_users %}
+  {% if user.2 > 0 %}
+  <tr>
+    <td><a href="http://www.twitter.com/{{ user.0 }}"><b>{{ user.0 }}</b></a></td>
+    <td>{{ user.1 }}</td> 
+    <td>{{ user.2 }}</td> 
+  </tr>
+  {% endif %}
+{% endfor %}
+
+</table>
+        </div>
+
+
+
+        <div class="col-lg-4" id="alttags" >
+          <h2>Related Hashtags</h2>
+  <table style="width:100%">
+{% for tag in t_tags %}
+  <tr>
+    <td>{{ tag.0 }}</td>
+    <td>{{ tag.1 }}</td> 
+  </tr>
+{% endfor %}
+</table>     
+
+       </div>
+        <div class="col-lg-4" id="reltags" >
+          <h2>Top Tweets</h2>
+  <table style="width:100%">
+ {% for tag in t_tweets %}
+  <tr>
+    <td><a href="http://www.twitter.com/{{ tag.1 }}"><b>{{ tag.1 }}</b>:</a> {{ tag.0 }}</td>
+  </tr>
+{% endfor %} 
+</table>     
+        </div>
+      </div>
+
+ 
+
+{% endblock %} 

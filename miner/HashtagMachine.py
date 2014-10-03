@@ -2,20 +2,14 @@ import requests
 from django.conf import settings
 import numpy as np
 import pandas as pd
+from miner.models import IG_Hashtag,IG_Image,IG_User,IG_ImageTags,IG_HashFriends
 
 class Hashtagerator:
 
-    def __init__(self,code,keyword='ebola'):
+    def __init__(self,access_token,keyword='ebola'):
 
         self.keyword = keyword
-        keys = {'client_id':settings.IG_CLIENT_ID,'client_secret':settings.IG_CLIENT_SECRET,'grant_type':'authorization_code','redirect_uri':settings.IG_REDIRECT,'code':code}
-        post = requests.post('https://api.instagram.com/oauth/access_token',data=keys).json()
-        self.p = post
-        if 'access_token' in post:
-            self.authd = True
-            self.access_token = post['access_token']
-        else:
-            self.authd = False
+        self.access_token = access_token
 
     def get_images(self,keyword=None,max_iter=5):
 
@@ -76,24 +70,24 @@ class Hashtagerator:
         r_user = requests.get('https://api.instagram.com/v1/users/%s/?access_token=%s' % (user_id,self.access_token))
         if r_user.status_code/2 == 100:
             user_details = r_user.json()['data']
-            mages = []
-            counter = 0
-            print user_id
-            while True:
-                counter += 1
-                r_json = r_mages.json()
-                if ('data' in r_json):
-                    mages += [img['likes']['count'] for img in r_json['data']]
-                    if ('pagination' in r_json) & ('next_url' in r_json['pagination']) & (counter<max_iter):
-                        r = requests.get(r_json['pagination']['next_url'])
-                        continue
-                    else:
-                        break
-                break
-
-            user_details['avg_likes'] = np.mean(mages)
+#            mages = []
+#            counter = 0
+#            print user_id
+#            while True:
+#                counter += 1
+#                r_json = r_mages.json()
+#                if ('data' in r_json):
+#                    mages += [img['likes']['count'] for img in r_json['data']]
+#                    if ('pagination' in r_json) & ('next_url' in r_json['pagination']) & (counter<max_iter):
+#                        r = requests.get(r_json['pagination']['next_url'])
+#                        continue
+#                    else:
+#                        break
+#                break
+#
+#            user_details['avg_likes'] = np.mean(mages)
             return user_details
-
+                                        
  
 
     def score_related_hashtags(self,keyword):
@@ -117,15 +111,65 @@ class Hashtagerator:
             hashtag_scores.update({hashtag:(score,len(imgs))})
         
         return hashtag_scores 
+
+    def store_in_db(self,keyword,max_iter=2):
+
+        keyword = keyword.lower().replace('#','')
+        images = self.get_images(keyword,max_iter)
+        img_info = [self.juice_image(img) for img in images]
+        hashtags, users = self.collate_mages(img_info)
+        user_info = {user: self.get_user(user) for user in users}
         
+        # create base hashtag
+        db_base_tag,created = IG_Hashtag.objects.get_or_create(name = keyword)
+
+        for image in images:
+            img_info = self.juice_image(image) 
+            user = self.get_user(img_info['user_id'])
+        # create users
+            db_user,user_created = IG_User.objects.get_or_create(username = img_info['user_id'],rating = user_info[img_info['user_id']]['counts']['followed_by'])
+
+        # create image
+            db_image,created = IG_Image.objects.get_or_create(IG_id=img_info['id'],url=img_info['url'],likes=img_info['likes'],user = db_user)
+
+        # create other hashtags and friends
+            for hashtag in img_info['hashtags']:
+                db_tag,created = IG_Hashtag.objects.get_or_create(name=hashtag.lower())
+                IG_HashFriends.objects.get_or_create(base_hash=db_base_tag,related_hash=db_tag)
+                IG_ImageTags.objects.get_or_create(image = db_image, hashtag = db_tag)
+                
         
+    def get_top_images(self,hashtag):
 
-#    def describe_user(self,user_id):
+        try:
+            db_tag = IG_Hashtag.objects.filter(name = hashtag.lower())[0]
+        except:
+            return None
 
+        QS = IG_ImageTags.objects.filter(hashtag=db_tag)
+        Image_URLS = []
+        for qs in QS:
+            Image_URLS.append((qs.image.url,qs.image.likes,qs.image.user.username))
+        return sorted(Image_URLS,key=lambda x: x[1],reverse=True)
 
+    def get_related_tags(self,hashtag):
 
+        try:
+            db_tag = IG_Hashtag.objects.filter(name = hashtag.lower())[0]
+        except:
+            return None
 
-    
+        QS = IG_HashFriends.objects.filter(base_hash=db_tag)
+        related_tags = []
+        for qs in QS:
+            related_tag = qs.related_hash
+            if related_tag.name == hashtag:
+                continue
+            related_mages = IG_ImageTags.objects.filter(hashtag=related_tag)
+            sum_likes = np.sum([img.image.likes for img in related_mages])
+            related_tags.append((related_tag.name,sum_likes))
+
+        return sorted(related_tags,key=lambda x: x[1],reverse=True)
             
                 
                 

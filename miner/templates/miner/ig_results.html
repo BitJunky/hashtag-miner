@@ -1,0 +1,36 @@
+{% extends "index.html" %}  
+
+{% block content %}
+     <!-- row of columns -->
+      <div class="row">
+        <div class="col-lg-4" id="topusers" >
+          <h2>Top Images</h2>
+ <table style="width:100%">
+{% for image in ig_images %}
+  <tr>
+<td> <a href="default.asp">
+  <img src="{{ image.0  }}"  style="width:42px;height:42px;border:0">
+</a>
+</td>
+  </tr>
+{% endfor %}
+
+</table>
+        </div>
+
+        <div class="col-lg-4" id="alttags" >
+          <h2>Related Hashtags</h2>
+  <table style="width:100%">
+{% for tag in ig_tags %}
+  <tr>
+    <td>{{ tag.0 }}</td>
+    <td>{{ tag.1 }}</td> 
+  </tr>
+{% endfor %}
+</table>     
+
+       </div>
+
+ 
+
+{% endblock %} 
