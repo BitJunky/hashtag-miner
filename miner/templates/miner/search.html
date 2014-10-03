@@ -1,0 +1,42 @@
+{% extends "index.html" %}  
+
+{% block content %}
+       <div class="jumbotron">
+        <h1>The Hashtag Growth Engine</h1>
+        <p class="lead">Input a hashtag and we'll give you everything you need to know</p>
+      
+      <form method='post'>
+      {% csrf_token %}
+      <div class="input-group">
+          <span class="input-group-addon">#</span>
+          <input type="text" class="form-control" placeholder="Enter Hashtag" name='hashtag'>
+        </div>  <br>
+        <center>
+        <button type="submit" class="btn btn-default btn-lg">
+          <span class="glyphicon glyphicon-search"></span> Search
+        </button></center>
+      </form>
+      </div>
+
+      <!-- row of columns -->
+      <div class="row">
+        <div class="col-lg-4" id="topusers" hidden="true">
+          <h2>Top Users</h2>
+          <p>TYPE HERE </p>
+          <p><a class="btn btn-primary" href="#" role="button">View details &raquo;</a></p>
+        </div>
+        <div class="col-lg-4" id="alttags" hidden="true">
+          <h2>Alternate Hashtags</h2>
+          <p>TYPE HERE</p>
+          <p><a class="btn btn-primary" href="#" role="button">View details &raquo;</a></p>
+       </div>
+        <div class="col-lg-4" id="reltags" hidden="true">
+          <h2>Related Hashtags</h2>
+          <p>TYPE HERE</p>
+          <p><a class="btn btn-primary" href="#" role="button">View details &raquo;</a></p>
+        </div>
+      </div>
+
+ 
+
+{% endblock %} 
