@@ -4,13 +4,15 @@
      <!-- row of columns -->
       <div class="row">
         <div class="col-lg-4" id="topusers" >
+ <img class="img-circle" src="http://blog.mobileroadie.com/wp-content/uploads/2012/05/topusers_2x_bg-480x340.png" alt="Generic placeholder image" style="width: 120px; height: 120px;">
           <h2>Top Posters</h2>
  <table style="width:100%">
+<td><b></b></td>
+<td><b>Retweets</b></td>
 {% for user in t_users %}
   {% if user.2 > 0 %}
   <tr>
     <td><a href="http://www.twitter.com/{{ user.0 }}"><b>{{ user.0 }}</b></a></td>
-    <td>{{ user.1 }}</td> 
     <td>{{ user.2 }}</td> 
   </tr>
   {% endif %}
@@ -22,18 +24,24 @@
 
 
         <div class="col-lg-4" id="alttags" >
+ <img class="img-circle" src="http://chadhyams.files.wordpress.com/2013/01/fotolia_40849437_subscription_xxl.jpg" style="width: 120px; height: 120px;">
           <h2>Related Hashtags</h2>
-  <table style="width:100%">
+  <table style="width:90%">
+<td></td>
+<td><b>Posts</b></td> 
+<td><b>Retweets</b></td> 
 {% for tag in t_tags %}
   <tr>
-    <td>{{ tag.0 }}</td>
+    <td><a href='http://localhost:8000/?hashtag={{ tag.0 }}'>{{ tag.0 }}</a></td>
     <td>{{ tag.1 }}</td> 
+    <td>{{ tag.2 }}</td> 
   </tr>
 {% endfor %}
 </table>     
 
        </div>
         <div class="col-lg-4" id="reltags" >
+ <img class="img-circle" src="http://www.internetretailer.com/static/uploads/thumbs/Growth-Upward-Trend-Arrow-Chart_jpg_280x280_crop_q95.jpg" alt="Generic placeholder image" style="width: 120px; height: 120px;">
           <h2>Top Tweets</h2>
   <table style="width:100%">
  {% for tag in t_tweets %}
@@ -45,6 +53,5 @@
         </div>
       </div>
 
- 
 
 {% endblock %} 

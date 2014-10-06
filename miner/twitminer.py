@@ -8,6 +8,7 @@ import IPython
 from collections import Counter
 from twitter import TwitterError
 import hashlib
+import django.utils.encoding as uu
 
 class TwitHasher:
 
@@ -106,7 +107,7 @@ class TwitHasher:
             db_hashtag = T_Hashtag.objects.get(name = keyword)
         except T_Hashtag.DoesNotExist:
             db_hashtag = T_Hashtag.objects.create(name = keyword)   
-        pop_tweets = self.api.GetSearch('#'+keyword,count=100,result_type='popular')
+        pop_tweets = self.api.GetSearch(uu.smart_text('#'+keyword),count=100,result_type='popular')
         if not pop_tweets:
             return None
         
@@ -116,20 +117,20 @@ class TwitHasher:
         counter = 0
         while counter < max_iters:
             try:
-                recent_tweets = self.api.GetSearch('#'+keyword,count=100,result_type='recent')
+                recent_tweets = self.api.GetSearch(uu.smart_text('#'+keyword),count=100,result_type='recent')
             except TwitterError:
                 break
             else:
                 process_tweets(recent_tweets,base_hashtag=db_hashtag)
                 counter += 1
-        if no_stream:
+        if not no_stream:
             counter = 0
             recent_tweets = []
-            stream = self.api.GetStreamFilter(track=['#'+keyword])
+            stream = self.api.GetStreamFilter(track=[uu.smart_text('#'+keyword)])
             while counter < max_iters:
                 try:
                     tweet = stream.next()
-                except TwitterError:
+                except (TwitterError,KeyboardInterrupt):
                     break
                 else:
                     counter += 1
@@ -182,7 +183,8 @@ class TwitHasher:
             related_hash = qs.related_hash.name
             if related_hash == hashtag:
                 continue
-            hash_counts.append((related_hash,self.count_tweets_hash(related_hash)))
+            hash_counts.append((related_hash,self.count_tweets_hash(related_hash),self.count_retweets_hash(related_hash)))
+            hash_counts = [hc for hc in hash_counts if hc[0] != 'ebola']
 
         return sorted(hash_counts, key=lambda tup: tup[1],reverse=True)
 
@@ -195,6 +197,19 @@ class TwitHasher:
 
         QS = T_TweetTags.objects.filter(hashtag = db_hashtag)
         return len(QS) 
+
+    def count_retweets_hash(self,hashtag):
+
+        try:
+            db_hashtag = T_Hashtag.objects.get(name = hashtag.lower)
+        except T_Hashtag.DoesNotExist:
+            return None
+
+        QS = T_TweetTags.objects.filter(hashtag = db_hashtag)
+        retweets = 0
+        for qs in QS:
+            retweets += qs.tweet.retweets
+        return retweets
 
         
         

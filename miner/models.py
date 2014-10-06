@@ -16,6 +16,7 @@ class IG_HashtagRankings(models.Model):
     score = models.FloatField()
 
 class IG_User(models.Model):
+    user_id = models.CharField(max_length=200)
     username = models.CharField(max_length=200)
     rating = models.FloatField()
     last_updated = models.DateTimeField(auto_now=True)

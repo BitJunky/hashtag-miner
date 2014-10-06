@@ -2,7 +2,7 @@
 
 {% block content %}
        <div class="jumbotron">
-        <h1>The Hashtag Growth Engine</h1>
+        <h1>The Mad Tagger</h1>
         <p class="lead">Input a hashtag and we'll give you everything you need to know</p>
       
       <form method='post'>
@@ -10,7 +10,12 @@
       <div class="input-group">
           <span class="input-group-addon">#</span>
           <input type="text" class="form-control" placeholder="Enter Hashtag" name='hashtag'>
-        </div>  <br>
+        </div>  
+   <div class="checkbox">
+    <label>
+      <input type="checkbox" name='instagram' value=1> Instagram?
+    </label>
+  </div>
         <center>
         <button type="submit" class="btn btn-default btn-lg">
           <span class="glyphicon glyphicon-search"></span> Search

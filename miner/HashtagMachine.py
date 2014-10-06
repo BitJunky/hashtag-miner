@@ -47,9 +47,10 @@ class Hashtagerator:
 
         hashtags = img['tags']
         user = img['user']['id']
+        username = img['user']['username']
         url = img['images']['low_resolution']['url']
         likes = img['likes']['count']
-        return {'id':img['id'],'user_id':user,'hashtags':hashtags,'url':url,'likes':likes}
+        return {'id':img['id'],'user_id':user,'username':username,'hashtags':hashtags,'url':url,'likes':likes}
 
     def collate_mages(self,image_dicts):
 
@@ -112,10 +113,10 @@ class Hashtagerator:
         
         return hashtag_scores 
 
-    def store_in_db(self,keyword,max_iter=2):
+    def store_in_db(self,keyword,max_iters=2):
 
         keyword = keyword.lower().replace('#','')
-        images = self.get_images(keyword,max_iter)
+        images = self.get_images(keyword,max_iters)
         img_info = [self.juice_image(img) for img in images]
         hashtags, users = self.collate_mages(img_info)
         user_info = {user: self.get_user(user) for user in users}
@@ -127,7 +128,8 @@ class Hashtagerator:
             img_info = self.juice_image(image) 
             user = self.get_user(img_info['user_id'])
         # create users
-            db_user,user_created = IG_User.objects.get_or_create(username = img_info['user_id'],rating = user_info[img_info['user_id']]['counts']['followed_by'])
+            IG_User.objects.filter(user_id = img_info['user_id'],username = img_info['username'],rating = user_info[img_info['user_id']]['counts']['followed_by'])
+            db_user,user_created = IG_User.objects.get_or_create(user_id = img_info['user_id'],username = img_info['username'],rating = user_info[img_info['user_id']]['counts']['followed_by'])
 
         # create image
             db_image,created = IG_Image.objects.get_or_create(IG_id=img_info['id'],url=img_info['url'],likes=img_info['likes'],user = db_user)

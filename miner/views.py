@@ -7,6 +7,7 @@ from django.shortcuts import render
 from miner.HashtagMachine import Hashtagerator as ig_ht 
 from miner.twitminer import TwitHasher as twit_ht
 from miner.models import IG_HashFriends,T_HashFriends,T_Hashtag,IG_Hashtag
+import django.utils.encoding as uu
 import requests
 
 redirect_uri = 'http://localhost:8000/redirect/'
@@ -16,44 +17,62 @@ def index(request):
 
             hashtag = request.POST.get('hashtag')
 
-            IG = False
-            
-            if IG == True:
+            IG = ('instagram' in request.POST) & (request.POST.get('instagram')=='1')
+
+            if not IG:
                 # check if hash exists
                 tt = twit_ht()
                 try:
                     db_tag = T_Hashtag.objects.filter(name = hashtag.lower())[0]
                 except IndexError:
-                    pass
-#tt.store_in_db(keyword = hashtag,max_iters=3,no_stream=True)
+                    tt.store_in_db(keyword = uu.smart_text(hashtag),max_iters=6,no_stream=True)
 
                 # get twitter users,hashtags
                 t_users = tt.get_users(hashtag=hashtag)
                 t_tags = tt.related_tags(hashtag=hashtag)
+                t_tags = [(t[0],t[1],t[2]) for t in t_tags if t[1] > 2]
                 t_tweets = tt.top_tweets(hashtag=hashtag,max_tweets=10)
 
                 context = {'t_users':t_users,'t_tags':t_tags,'t_tweets':t_tweets}
 
-                return HttpResponse('hi')
-#return render(request,"miner/t_results.html",context)
+                return render(request,"miner/t_results.html",context)
             else:  # do IG
-                hh = ig_ht()
+                hh = ig_ht(request.session['access_token'],hashtag)
                 try:
                     db_tag = IG_Hashtag.objects.filter(name = hashtag.lower())[0]
                 except IndexError:
-                    pass
-#hh.store_in_db(keyword = hashtag,max_iters=3)
+                    hh.store_in_db(keyword = uu.smart_text(hashtag),max_iters=2)
 
                 ig_images = hh.get_top_images(hashtag=hashtag)
                 ig_tags = hh.get_related_tags(hashtag=hashtag)
                 
-                context = {'ig_images':t_images,'ig_tags':ig_tags}
-                return HttpResponse('IG')
-#                return render(request,"miner/ig_results.html",context)
+                context = {'ig_images':ig_images,'ig_tags':ig_tags}
+                return render(request,"miner/ig_results.html",context)
         else: 
+            if 'hashtag' in request.GET:
+                hashtag = request.GET.get('hashtag')
+
+                # check if hash exists
+                tt = twit_ht()
+                try:
+                    tt.store_in_db(keyword = uu.smart_text(hashtag),max_iters=2,no_stream=True)
+                except IndexError:
+                    pass
+
+                # get twitter users,hashtags
+                t_users = tt.get_users(hashtag=hashtag)
+                t_tags = tt.related_tags(hashtag=hashtag)
+                t_tags = [(t[0],t[1],t[2]) for t in t_tags if t[1] > 2]
+                t_tweets = tt.top_tweets(hashtag=hashtag,max_tweets=10)
+
+                context = {'t_users':t_users,'t_tags':t_tags,'t_tweets':t_tweets}
+
+                return render(request,"miner/t_results.html",context)
+  
         #display message 
-            context = {}
-            return render(request,"miner/search.html")
+            else:
+                context = {}
+                return render(request,"miner/search.html")
     else:
         IGauth = 'https://api.instagram.com/oauth/authorize/?response_type=code&client_id=%s&redirect_uri=%s' % (settings.IG_CLIENT_ID,redirect_uri)
 
