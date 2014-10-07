@@ -18,8 +18,9 @@ def index(request):
             hashtag = request.POST.get('hashtag')
 
             IG = ('instagram' in request.POST) & (request.POST.get('instagram')=='1')
+            load = request.POST.get('load')=='1'
 
-            if not IG:
+            if not (IG | load):
                 # check if hash exists
                 tt = twit_ht()
                 try:
@@ -36,7 +37,11 @@ def index(request):
                 context = {'t_users':t_users,'t_tags':t_tags,'t_tweets':t_tweets}
 
                 return render(request,"miner/t_results.html",context)
-            else:  # do IG
+            elif (load) & (not IG):
+                tt = twit_ht()
+                tt.store_in_db(keyword = uu.smart_text(hashtag),max_iters=6,no_stream=True)
+                return render(request,"miner/search.html")
+            elif IG & (not load):  # do IG
                 hh = ig_ht(request.session['access_token'],hashtag)
                 try:
                     db_tag = IG_Hashtag.objects.filter(name = hashtag.lower())[0]
@@ -48,6 +53,10 @@ def index(request):
                 
                 context = {'ig_images':ig_images,'ig_tags':ig_tags}
                 return render(request,"miner/ig_results.html",context)
+            elif IG & load:
+                hh = ig_ht(request.session['access_token'],hashtag)
+                hh.store_in_db(keyword = uu.smart_text(hashtag),max_iters=2)
+                return render(request,"miner/search.html")
         else: 
             if 'hashtag' in request.GET:
                 hashtag = request.GET.get('hashtag')
