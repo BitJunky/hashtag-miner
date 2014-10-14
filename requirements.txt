@@ -1,0 +1,14 @@
+Django==1.7
+ipdb==0.8
+ipython==2.3.0
+numpy==1.9.0
+oauthlib==0.6.3
+pandas==0.14.1
+python-dateutil==2.2
+python-twitter==2.0
+pytz==2014.7
+requests==2.4.1
+requests-oauthlib==0.4.1
+simplejson==3.6.4
+six==1.8.0
+wsgiref==0.1.2
