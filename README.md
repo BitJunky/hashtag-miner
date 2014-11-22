@@ -1,10 +1,7 @@
 Pre-requisites:
 
-1. Navigate in iterm to where you want to save the files and enter:
-```
-git clone https://github.com/allentran/hashtag-miner.git
-```
-2. set up virtual environment (http://virtualenvwrapper.readthedocs.org/en/latest/)
+1. Clone this repository 
+2. Set up virtual environment (http://virtualenvwrapper.readthedocs.org/en/latest/)
 ``` 
            	pip install virtualenvwrapper ...
            	export WORKON_HOME=~/Envs
