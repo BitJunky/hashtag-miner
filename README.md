@@ -1,5 +1,7 @@
-Pre-requisites:
+##
+A simple hastag miner/explorer web app for the Growth team @ Premise.
 
+## Instructions
 1. Clone this repository 
 2. Set up virtual environment (http://virtualenvwrapper.readthedocs.org/en/latest/)
 ``` 
